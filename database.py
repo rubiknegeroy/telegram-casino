@@ -70,16 +70,3 @@ def remove_balance(user_id, amount):
         conn.commit()
         return True
     return False
-
-def add_gift_to_inventory(user_id, gift_id):
-    cursor.execute("INSERT INTO inventory (user_id, gift_id) VALUES (?, ?)", (user_id, gift_id))
-    conn.commit()
-
-def get_inventory(user_id):
-    cursor.execute('''
-        SELECT gifts.name, gifts.emoji, gifts.rarity
-        FROM inventory
-        JOIN gifts ON inventory.gift_id = gifts.id
-        WHERE inventory.user_id = ?
-    ''', (user_id,))
-    return cursor.fetchall()

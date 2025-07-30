@@ -1,82 +1,69 @@
-const API_URL = "http://127.0.0.1:5000"; // 
-let userId = null; // будет получен из Telegram WebApp
-let cases = [];
-let balance = 0;
 
-const roulette = document.getElementById("roulette");
-const resultDiv = document.getElementById("result");
-const balanceSpan = document.getElementById("balance");
+document.addEventListener("DOMContentLoaded", () => {
+    const casesContainer = document.getElementById("cases-container");
+    const roulette = document.getElementById("roulette");
+    const result = document.getElementById("result");
+    const balanceEl = document.getElementById("balance");
 
-// === Получаем данные пользователя из Telegram ===
-Telegram.WebApp.ready();
-Telegram.WebApp.expand();
-userId = Telegram.WebApp.initDataUnsafe.user.id;
+    let balance = 100; 
+    balanceEl.textContent = balance;
 
-// === Загружаем баланс ===
-async function loadBalance() {
-    const res = await fetch(`${API_URL}/get_balance/${userId}`);
-    const data = await res.json();
-    balance = data.balance;
-    balanceSpan.textContent = balance;
-}
+    const gifts = [
+        { name: "Медвежонок", rarity: "common", icon: "🐻" },
+        { name: "Кольцо", rarity: "rare", icon: "💍" },
+        { name: "Машина", rarity: "legendary", icon: "🚗" },
+        { name: "Телефон", rarity: "common", icon: "📱" },
+        { name: "Дом", rarity: "legendary", icon: "🏠" }
+    ];
 
-// === Загружаем кейсы ===
-async function loadCases() {
-    const res = await fetch(`${API_URL}/get_cases`);
-    cases = await res.json();
+    const cases = [
+        { id: 1, name: "Bronze", price: 1 },
+        { id: 2, name: "Silver", price: 5 },
+        { id: 3, name: "Gold", price: 10 }
+    ];
 
-    const container = document.querySelector(".cases");
-    container.innerHTML = "";
-
-    cases.forEach(c => {
-        const div = document.createElement("div");
-        div.classList.add("case");
-        div.innerHTML = `
-            <img src="https://api.telegram.org/file/bot<7702115093:AAG33V5LgsgOXnwGAhP5MRmJa1jSj78PUwk>/${c.image}" alt="${c.name}">
+    casesContainer.innerHTML = cases.map(c =>
+        `<div class="case" data-id="${c.id}" data-price="${c.price}">
             <p>${c.name} – ${c.price} ⭐</p>
-        `;
-        div.onclick = () => openCase(c.id);
-        container.appendChild(div);
+        </div>`
+    ).join("");
+
+    document.querySelectorAll(".case").forEach(caseEl => {
+        caseEl.addEventListener("click", () => {
+            const price = parseInt(caseEl.dataset.price);
+            if (balance < price) {
+                alert("Недостаточно звёзд!");
+                return;
+            }
+            balance -= price;
+            balanceEl.textContent = balance;
+            startRoulette();
+        });
     });
-}
 
-// === Открытие кейса ===
-async function openCase(caseId) {
-    const res = await fetch(`${API_URL}/open_case`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, case_id: caseId })
-    });
-    const data = await res.json();
+    function startRoulette() {
+        roulette.innerHTML = "";
+        result.textContent = "";
 
-    if (data.status === "error") {
-        return Telegram.WebApp.showAlert(data.message);
-    }
-
-    animateRoulette(data.gift);
-    await loadBalance();
-}
-
-// === Анимация рулетки ===
-function animateRoulette(gift) {
-    roulette.innerHTML = "";
-    resultDiv.textContent = "";
-
-    const emojis = ["🎁", "🎉", "💎", "🧸", "📦", "⭐"];
-    const animationLength = 20;
-    let index = 0;
-
-    const interval = setInterval(() => {
-        roulette.textContent = emojis[index % emojis.length];
-        index++;
-        if (index > animationLength) {
-            clearInterval(interval);
-            roulette.textContent = gift.emoji;
-            resultDiv.innerHTML = `🎉 Вы выиграли: <b>${gift.name}</b> (${gift.rarity})`;
+        const spinItems = [];
+        for (let i = 0; i < 30; i++) {
+            const randomGift = gifts[Math.floor(Math.random() * gifts.length)];
+            const item = document.createElement("div");
+            item.className = `gift ${randomGift.rarity}`;
+            item.textContent = `${randomGift.icon} ${randomGift.name}`;
+            roulette.appendChild(item);
+            spinItems.push(randomGift);
         }
-    }, 100);
-}
 
-// === Инициализация ===
-loadBalance();
-loadCases();
+        let position = 0;
+        const spinInterval = setInterval(() => {
+            roulette.scrollLeft = position;
+            position += 20;
+            if (position >= roulette.scrollWidth - roulette.clientWidth) {
+                clearInterval(spinInterval);
+                const winGift = spinItems[Math.floor(Math.random() * spinItems.length)];
+                result.textContent = `Вы выиграли: ${winGift.icon} ${winGift.name}!`;
+            }
+        }, 100);
+    }
+});
